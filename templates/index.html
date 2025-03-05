@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinterest Video Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+        
+        @keyframes skeleton {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .shining-loader {
+            background: linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #3b82f6 100%);
+            background-size: 200% auto;
+            animation: shine 1.5s linear infinite;
+        }
+
+        .skeleton-loader {
+            background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+            background-size: 400% 100%;
+            animation: skeleton 1.5s ease-in-out infinite;
+        }
+
+        .hidden { display: none; }
+
+        #downloadBtn{
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 min-h-screen">
+    <div class="container mx-auto px-4 py-12 max-w-3xl">
+        <div class="text-center mb-12">
+            <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">
+                Pinterest Video Downloader
+            </h1>
+            <p class="text-gray-300">Paste your Pinterest video URL to download it</p>
+        </div>
+
+        <form id="mainForm" class="mb-8">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input 
+                    type="url" 
+                    id="videoUrl"
+                    placeholder="Enter Pinterest URL here..."
+                    class="flex-1 rounded-lg px-4 py-3 bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    required
+                >
+                <button 
+                    type="submit"
+                    id="analyzeBtn"
+                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-300 relative overflow-hidden"
+                >
+                    <span class="relative z-10">Analyze</span>
+                </button>
+            </div>
+        </form>
+
+        <div id="skeletonLoader" class="hidden skeleton-loader animate-fade-in mb-8">
+            <div class="bg-gray-800 rounded-xl p-6 shadow-2xl">
+                <div class="aspect-video bg-gray-700 rounded-lg mb-4"></div>
+                <div class="h-12 bg-gray-700 rounded-lg w-48 mx-auto"></div>
+            </div>
+        </div>
+
+        <div id="previewContainer" class="hidden animate-fade-in">
+            <div class="bg-gray-800 rounded-xl p-6 shadow-2xl">
+                <div class="aspect-video bg-black rounded-lg overflow-hidden">
+                    <video id="videoPreview" class="w-full h-full" controls></video>
+                </div>
+                
+                <div class="mt-6 flex flex-col sm:flex-row justify-center gap-4">
+                    <a 
+                        id="downloadBtn"
+                        href="#"
+                        class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Download Video
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="hidden mt-6 p-4 bg-red-900/50 text-red-300 rounded-lg"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('mainForm')
+        const analyzeBtn = document.getElementById('analyzeBtn')
+        const previewContainer = document.getElementById('previewContainer')
+        const skeletonLoader = document.getElementById('skeletonLoader')
+        const errorMessage = document.getElementById('errorMessage')
+        const videoPreview = document.getElementById('videoPreview')
+        const downloadBtn = document.getElementById('downloadBtn')
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const url = document.getElementById('videoUrl').value
+            
+            errorMessage.classList.add('hidden')
+            previewContainer.classList.add('hidden')
+            skeletonLoader.classList.remove('hidden')
+            analyzeBtn.classList.add('shining-loader')
+            analyzeBtn.disabled = true
+            analyzeBtn.querySelector('span').textContent = 'Analyzing...'
+
+            try {
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `url=${encodeURIComponent(url)}`
+                })
+                const data = await response.json()
+                
+                if (data.error) throw new Error(data.error)
+                
+                videoPreview.src = data.video_url
+                videoPreview.controls = true
+                downloadBtn.href = `/download-file?url=${encodeURIComponent(data.video_url)}`
+
+                skeletonLoader.classList.add('hidden')
+                previewContainer.classList.remove('hidden')
+            } catch (err) {
+                errorMessage.textContent = err.message
+                errorMessage.classList.remove('hidden')
+                skeletonLoader.classList.add('hidden')
+            } finally {
+                analyzeBtn.classList.remove('shining-loader')
+                analyzeBtn.disabled = false
+                analyzeBtn.querySelector('span').textContent = 'Analyze'
+            }
+        })
+    </script>
+</body>
+</html>
